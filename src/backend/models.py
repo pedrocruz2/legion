@@ -9,8 +9,8 @@ class ChatRequest(BaseModel):
 
 
 class TestRequest(BaseModel):
-    target_agent: str
-    test_suite: str
+    message: str
+    target_agent: Optional[str] = "knowledge_agent"
 
 
 class ChatResponse(BaseModel):

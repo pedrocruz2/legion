@@ -7,3 +7,4 @@ data/*.json
 !data/.gitkeep
 __pycache__/
 context.md
+questions.txt

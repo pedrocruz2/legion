@@ -127,19 +127,43 @@ class SupportAgent(BaseAgent):
                     break
                 
                 for tool_call in tool_calls:
-                    tool_name = tool_call.get("name", "") if isinstance(tool_call, dict) else getattr(tool_call, "name", "")
-                    tool_args = tool_call.get("args", {}) if isinstance(tool_call, dict) else getattr(tool_call, "args", {})
-                    tool_call_id = tool_call.get("id", "") if isinstance(tool_call, dict) else getattr(tool_call, "id", f"call_{iteration}")
+                    if isinstance(tool_call, dict):
+                        tool_name = tool_call.get("name", "")
+                        tool_args = tool_call.get("args", {})
+                        tool_call_id = tool_call.get("id", "")
+                    else:
+                        tool_name = getattr(tool_call, "name", "")
+                        tool_args = getattr(tool_call, "args", {})
+                        tool_call_id = getattr(tool_call, "id", "")
+                    
+                    if not tool_name:
+                        logger.warning(f"Tool call missing name, skipping: {tool_call}")
+                        continue
+                    
+                    if not tool_call_id:
+                        tool_call_id = f"call_{iteration}_{len(tools_used)}"
+                    
                     tools_used.append(tool_name)
                     
-                    tool_result = await self._execute_tool(tool_name, tool_args, user_id)
-                    
-                    messages.append(
-                        ToolMessage(
-                            content=tool_result,
-                            tool_call_id=tool_call_id
+                    try:
+                        tool_result = await self._execute_tool(tool_name, tool_args, user_id)
+                        
+                        messages.append(
+                            ToolMessage(
+                                content=str(tool_result),
+                                tool_call_id=tool_call_id,
+                                name=tool_name
+                            )
                         )
-                    )
+                    except Exception as e:
+                        logger.error(f"Error executing tool {tool_name}: {str(e)}")
+                        messages.append(
+                            ToolMessage(
+                                content=f"Error executing {tool_name}: {str(e)}",
+                                tool_call_id=tool_call_id,
+                                name=tool_name
+                            )
+                        )
             
             final_response = messages[-1].content if messages else "I couldn't process your request."
             

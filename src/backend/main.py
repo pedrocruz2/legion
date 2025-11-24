@@ -5,9 +5,10 @@ from routers import agent_router, user_router
 from app.data.database import db
 from app.agents.support import SupportAgent
 from app.agents.knowledge import KnowledgeAgent
+from app.agents.testing import TestingAgent
 
 app = FastAPI(
-    title="Agent Swarm Backend",
+    title="Legion Backend",
     description="Multi-agent system for InfinitePay customer service",
     version="1.0.0"
 )
@@ -27,11 +28,12 @@ async def startup():
     await db.initialize()
     support_agent = SupportAgent()
     knowledge_agent = KnowledgeAgent()
+    testing_agent = TestingAgent()
 
 
 @app.get("/")
 async def root():
-    return {"message": "Agent Swarm Backend API", "version": "1.0.0"}
+    return {"message": "Legion Backend API", "version": "1.0.0"}
 
 
 app.include_router(agent_router.router)

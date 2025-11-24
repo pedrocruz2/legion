@@ -11,6 +11,7 @@ Multi-agent system for InfinitePay customer service using Gemini API, FastAPI, a
 - [Adding New Agents](#adding-new-agents)
 - [API Documentation](#api-documentation)
 - [Development](#development)
+- [Testing](#testing)
 - [Docker Deployment](#docker-deployment)
 
 ## Overview
@@ -66,7 +67,7 @@ Response to User
 3. **Specialized Agents**
    - **Knowledge Agent**: RAG-based product information
    - **Support Agent**: Tool-based customer support
-   - **Testing Agent**: (Future) Validation and testing
+   - **Testing Agent**: Validation and testing (see [Testing](#testing) for limitations)
 
 4. **Data Layer**
    - **ChromaDB**: Vector store for RAG (embedded, file-based)
@@ -362,6 +363,63 @@ Create a new user.
 }
 ```
 
+### POST /api/test
+
+Run tests against the Knowledge Agent using the structured test suite.
+
+**Request:**
+```json
+{
+  "message": "run_all"
+}
+```
+
+Or test a specific question:
+```json
+{
+  "message": "what are the fees for payment links"
+}
+```
+
+**Response (run_all):**
+```json
+{
+  "test_id": "test_1763989141.300044",
+  "status": "unknown",
+  "results": {
+    "response": "Test Suite Results:\n\nTotal Tests: 4\nPassed: 3\nFailed: 1\nErrors: 0\nPass Rate: 75.0%\nTotal Time: 37659ms\n\nDetailed Results:\n\ntest_001: PASS (Confidence: 1.00)\n  Question: what are the fees for payment links\n\ntest_002: PASS (Confidence: 1.00)\n  Question: quais são as taxas básicas para a maquininha\n\ntest_003: PASS (Confidence: 0.90)\n  Question: How does the infinitepay loans work\n\ntest_004: FAIL (Confidence: 0.95)\n  Question: como as taxas da infinitepay mudam de acordo com as faixas de faturamento",
+    "metadata": {
+      "total_tests": 4,
+      "passed": 3,
+      "failed": 1,
+      "errors": 0,
+      "pass_rate": 0.75,
+      "total_time_ms": 37659,
+      "results": [
+        {
+          "test_id": "test_001",
+          "question": "what are the fees for payment links",
+          "source_url": "https://www.infinitepay.io/link-de-pagamento",
+          "status": "PASS",
+          "confidence": 1.0,
+          "match": true,
+          "expected_answer": "Payment links have no fees for Pix. For credit card payments: 4.20% for one payment and 16.66% for 12 payments.",
+          "actual_response": "Para transações via Link de Pagamento, as taxas da InfinitePay são:\n\n*   **Crédito à vista:** A partir de 4,20%\n*   **Crédito 12x:** A partir de 16,66%\n*   **Pix:** taxa zero",
+          "comparison": {
+            "match": true,
+            "confidence": 1.0,
+            "reason": "The actual response accurately provides all the key information specified in the expected answer."
+          },
+          "processing_time_ms": 9081
+        }
+      ]
+    }
+  }
+}
+```
+
+**Note**: See [Testing](#testing) section for the full journey and how the testing approach evolved.
+
 ### GET /api/health
 
 System health check including agent status.
@@ -432,6 +490,199 @@ class IntentType(str, Enum):
 2. Create agent that handles it (see [Adding New Agents](#adding-new-agents))
 3. Router automatically discovers it!
 
+## Testing
+
+### Implementation Approach
+
+The Testing Agent validates Knowledge Agent responses by comparing them against expected answers. The initial implementation used live web scraping, but this approach had significant limitations.
+
+#### Initial Approach: Live Web Scraping
+
+The first implementation scraped InfinitePay pages in real-time and compared them with agent responses using LLM-based validation. This approach failed due to:
+
+- **False negatives**: Correct responses were marked as FAIL when phrasing differed from scraped content
+- **Limited scope**: Scraped pages didn't contain all information available in the RAG database
+- **Semantic equivalence**: The comparison couldn't recognize that different phrasings could convey the same information
+- **Data format variations**: Financial data can be presented in multiple valid formats, but strict comparison treated any difference as failure
+
+For example, the agent would correctly state tax rates (0.35% debit, 2.69% credit), but the tester would mark it as FAIL because those exact numbers weren't found in the scraped content.
+
+#### Current Approach: Structured Test Suite
+
+The current implementation uses a structured test suite (`src/backend/app/utils/test_suite.json`) with:
+- Predefined questions with expected answers
+- Source URLs for each test case
+- LLM-based comparison that evaluates semantic correctness rather than exact text matching
+
+This approach is more reliable because the comparison focuses on whether the answer contains key information, not whether it matches scraped text exactly.
+
+### How It Works Now
+
+The test suite lives in `src/backend/app/utils/test_suite.json` with questions like:
+- "What are the fees for payment links?"
+- "How do InfinitePay loans work?"
+- "How do fees change by revenue brackets?"
+
+You can run all tests or individual ones via the API.
+
+### Example: Running All Tests
+
+Here's what a full test run looks like:
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/test \
+  -H "Content-Type: application/json" \
+  -d '{"message": "run_all"}'
+```
+
+**Response:**
+```json
+{
+  "test_id": "test_1763989141.300044",
+  "status": "unknown",
+  "results": {
+    "response": "Test Suite Results:\n\nTotal Tests: 4\nPassed: 3\nFailed: 1\nErrors: 0\nPass Rate: 75.0%\nTotal Time: 37659ms\n\nDetailed Results:\n\ntest_001: PASS (Confidence: 1.00)\n  Question: what are the fees for payment links\n\ntest_002: PASS (Confidence: 1.00)\n  Question: quais são as taxas básicas para a maquininha\n\ntest_003: PASS (Confidence: 0.90)\n  Question: How does the infinitepay loans work\n\ntest_004: FAIL (Confidence: 0.95)\n  Question: como as taxas da infinitepay mudam de acordo com as faixas de faturamento",
+    "metadata": {
+      "total_tests": 4,
+      "passed": 3,
+      "failed": 1,
+      "errors": 0,
+      "pass_rate": 0.75,
+      "total_time_ms": 37659,
+      "results": [
+        {
+          "test_id": "test_001",
+          "question": "what are the fees for payment links",
+          "source_url": "https://www.infinitepay.io/link-de-pagamento",
+          "status": "PASS",
+          "confidence": 1.0,
+          "match": true,
+          "expected_answer": "Payment links have no fees for Pix. For credit card payments: 4.20% for one payment and 16.66% for 12 payments.",
+          "actual_response": "Para transações via Link de Pagamento, as taxas da InfinitePay são:\n\n*   **Crédito à vista:** A partir de 4,20%\n*   **Crédito 12x:** A partir de 16,66%\n*   **Pix:** taxa zero\n\n(Fonte: https://www.infinitepay.io e https://www.infinitepay.io/rendimento)",
+          "agent_metadata": {
+            "sources": [
+              "https://www.infinitepay.io/rendimento",
+              "https://www.infinitepay.io/link-de-pagamento",
+              "https://www.infinitepay.io"
+            ],
+            "chunks_retrieved": 5,
+            "confidence": 0.9,
+            "processing_time_ms": 4426
+          },
+          "comparison": {
+            "match": true,
+            "confidence": 1.0,
+            "reason": "The actual response accurately provides all the key information specified in the expected answer regarding the fees for Pix, one-time credit card payments, and 12-installment credit card payments, with the added nuance of \"starting from\" for credit card fees.",
+            "differences": [],
+            "similarities": []
+          },
+          "processing_time_ms": 9081
+        },
+        {
+          "test_id": "test_002",
+          "question": "quais são as taxas básicas para a maquininha",
+          "source_url": "https://www.infinitepay.io/maquininha",
+          "status": "PASS",
+          "confidence": 1.0,
+          "match": true,
+          "expected_answer": "As taxas básicas para a maquininha são: Pix: 0%, Débito: 0,35%, Crédito à vista: 2,69%, Em 3x: 4,46%, Em 6x: 5,99%, Em 12x: 8,99%.",
+          "actual_response": "As taxas para a maquininha InfinitePay, para recebimento em 1 dia útil com bandeiras Visa e Master, são a partir de:\n\n*   **Pix:** 0%\n*   **Débito:** 0,35%\n*   **Crédito à vista:** 2,69%\n*   **Em 3x:** 4,46%\n*   **Em 6x:** 5,99%\n*   **Em 12x:** 8,99%\n\nFonte: https://www.infinitepay.io/maquininha",
+          "agent_metadata": {
+            "sources": [
+              "https://www.infinitepay.io/pdv",
+              "https://www.infinitepay.io/maquininha"
+            ],
+            "chunks_retrieved": 5,
+            "confidence": 0.9,
+            "processing_time_ms": 3198
+          },
+          "comparison": {
+            "match": true,
+            "confidence": 1.0,
+            "reason": "The actual response contains all the key information specified in the expected answer, with identical rates and categories. It also provides additional relevant context and formatting, making it accurate and complete relative to the expected answer.",
+            "differences": [],
+            "similarities": []
+          },
+          "processing_time_ms": 7992
+        },
+        {
+          "test_id": "test_003",
+          "question": "How does the infinitepay loans work",
+          "source_url": "https://www.infinitepay.io/emprestimo",
+          "status": "PASS",
+          "confidence": 0.9,
+          "match": true,
+          "expected_answer": "InfinitePay loans work by allowing vendors to link their sales to pay off the loan. The vendor can choose what percentage of their sales will be destined to paying the loan, making it a flexible repayment system based on business performance.",
+          "actual_response": "O empréstimo da InfinitePay funciona de forma simples e flexível, sem burocracia, e o dinheiro cai na conta em segundos. Veja como funciona:\n\n1.  **Acesse o app da InfinitePay**: Faça login no aplicativo e vá para o menu \"Seu banco\".\n2.  **Simule o valor**: Clique em \"InfiniteCash\", digite o valor desejado e verifique o crédito máximo liberado para o seu negócio. Você pode escolher até esse limite.\n3.  **Selecione a forma de pagamento**: Escolha a porcentagem diária das suas vendas que será destinada ao pagamento do empréstimo.\n4.  **Dinheiro na conta em segundos** (Fonte: https://www.infinitepay.io/emprestimo)",
+          "agent_metadata": {
+            "sources": [
+              "https://www.infinitepay.io/rendimento",
+              "https://www.infinitepay.io/gestao-de-cobranca",
+              "https://www.infinitepay.io/emprestimo",
+              "https://www.infinitepay.io/boleto",
+              "https://www.infinitepay.io"
+            ],
+            "chunks_retrieved": 5,
+            "confidence": 0.9,
+            "processing_time_ms": 3728
+          },
+          "comparison": {
+            "match": true,
+            "confidence": 0.9,
+            "reason": "The actual response contains the core information from the expected answer regarding how the loans work (repayment via a chosen percentage of sales, making it flexible). It also provides additional detail on the application process and benefits, which are supplementary but do not contradict the expected answer.",
+            "differences": [],
+            "similarities": []
+          },
+          "processing_time_ms": 10439
+        },
+        {
+          "test_id": "test_004",
+          "question": "como as taxas da infinitepay mudam de acordo com as faixas de faturamento",
+          "source_url": "https://www.infinitepay.io",
+          "status": "FAIL",
+          "confidence": 0.95,
+          "match": false,
+          "expected_answer": "As taxas da InfinitePay mudam de acordo com as faixas de faturamento: menos de 20K BRL, 20-40K BRL, 40-80K BRL, e 80K+ BRL. Quanto menor a receita, maiores são as taxas. Para recebimento em 1 dia útil: Faturamento acima de 80 mil por mês: Pix: GRÁTIS, Débito: 0,75%, Crédito à vista: 2,69%, 12x: 8,99%. Faturamento acima de 40 mil por mês: Pix: GRÁTIS, Débito: 0,79%, Crédito à vista: 2,79%, 12x: 9,56%. Faturamento acima de 20 mil por mês: Pix: GRÁTIS, Débito: 0,85%, Crédito à vista: 2,89%, 12x: 10,12%. Faturamento até 20 mil por mês: Pix: GRÁTIS, Débito: 1,37%, Crédito à vista: 3,15%, 12x: 12,40%.",
+          "actual_response": "As taxas da InfinitePay variam conforme faturamento, tipo de transação e bandeira (Source: https://www.infinitepay.io, https://www.infinitepay.io/rendimento).\n\nNo entanto, o contexto fornecido não detalha como as taxas mudam especificamente de acordo com as faixas de faturamento. Ele apenas afirma que elas variam.",
+          "agent_metadata": {
+            "sources": [
+              "https://www.infinitepay.io/emprestimo",
+              "https://www.infinitepay.io/rendimento",
+              "https://www.infinitepay.io"
+            ],
+            "chunks_retrieved": 5,
+            "confidence": 0.9,
+            "processing_time_ms": 4612
+          },
+          "comparison": {
+            "match": false,
+            "confidence": 0.95,
+            "reason": "The actual response fails to provide the detailed breakdown of how rates change across specific faturamento ranges, which is the core information requested by the question and provided in the expected answer. It only makes a general statement about variation and explicitly notes its own lack of detail.",
+            "differences": [
+              "The expected answer provides specific faturamento ranges (e.g., menos de 20K BRL, 20-40K BRL, 40-80K BRL, 80K+ BRL) and the corresponding detailed rates for various transaction types (Pix, Débito, Crédito à vista, 12x) for each range. The actual response only states that rates vary by faturamento, type of transaction, and bandeira, but does not provide any of these specific ranges or rates, nor does it detail *how* they change."
+            ],
+            "similarities": [
+              "Both responses acknowledge that InfinitePay's rates vary according to faturamento."
+            ]
+          },
+          "processing_time_ms": 10139
+        }
+      ]
+    }
+  }
+}
+```
+
+### Conclusions
+
+1. **Live scraping is unreliable for validation** - Pages change, content varies, and you can't guarantee what you scrape matches what's in the RAG database
+2. **Structured tests are way better** - Having expected answers lets the LLM focus on semantic correctness rather than exact text matching
+3. **LLM comparison still has issues** - Sometimes it's too strict, sometimes too lenient. It's a tool, not a definitive judge
+4. **Test failures can be informative** - When test_004 fails, it tells us the RAG system might not have the detailed fee breakdown in the vector DB. That's useful!
+
+The Testing Agent is now a helpful tool for catching obvious issues, but we still need human judgment for edge cases. It's not perfect, but it's way better than the scraping approach.
+
 ## Docker Deployment
 
 ### Dockerfile
@@ -495,7 +746,3 @@ These are mounted as volumes, so data survives container restarts.
 - **Database**: SQLite (via aiosqlite)
 - **Web Scraping**: BeautifulSoup4, html2text
 - **Deployment**: Docker, Docker Compose
-
-## License
-
-[Your License Here]

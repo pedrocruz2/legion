@@ -12,6 +12,7 @@ from models import (
 )
 from app.agents.router import RouterAgent
 from app.core.agent_registry import AgentRegistry
+from app.models.agent_metadata import IntentType
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 from config import settings
@@ -51,12 +52,31 @@ async def chat(request: ChatRequest):
 
 @router.post("/test", response_model=TestResponse)
 async def test(request: TestRequest):
-    """Trigger testing agent"""
-    return TestResponse(
-        test_id="test_placeholder",
-        status="pending",
-        results={}
-    )
+    """Trigger testing agent to validate knowledge agent responses"""
+    try:
+        testing_agent_metadata = registry.get_agent("testing_agent")
+        if not testing_agent_metadata or not testing_agent_metadata.agent_instance:
+            raise HTTPException(status_code=404, detail="Testing agent not found")
+        
+        testing_agent = testing_agent_metadata.agent_instance
+        context = {
+            "message": request.message,
+            "user_id": None,
+            "timestamp": datetime.now()
+        }
+        
+        result = await testing_agent.process(context)
+        
+        return TestResponse(
+            test_id=f"test_{datetime.now().timestamp()}",
+            status=result.get("metadata", {}).get("status", "unknown"),
+            results={
+                "response": result.get("response", ""),
+                "metadata": result.get("metadata", {})
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error running test: {str(e)}")
 
 
 @router.get("/health", response_model=HealthResponse)

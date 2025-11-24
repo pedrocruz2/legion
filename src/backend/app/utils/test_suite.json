@@ -1,0 +1,29 @@
+{
+  "test_cases": [
+    {
+      "id": "test_001",
+      "question": "what are the fees for payment links",
+      "source_url": "https://www.infinitepay.io/link-de-pagamento",
+      "expected_answer": "Payment links have no fees for Pix. For credit card payments: 4.20% for one payment and 16.66% for 12 payments."
+    },
+    {
+      "id": "test_002",
+      "question": "quais são as taxas básicas para a maquininha",
+      "source_url": "https://www.infinitepay.io/maquininha",
+      "expected_answer": "As taxas básicas para a maquininha são: Pix: 0%, Débito: 0,35%, Crédito à vista: 2,69%, Em 3x: 4,46%, Em 6x: 5,99%, Em 12x: 8,99%."
+    },
+    {
+      "id": "test_003",
+      "question": "How does the infinitepay loans work",
+      "source_url": "https://www.infinitepay.io/emprestimo",
+      "expected_answer": "InfinitePay loans work by allowing vendors to link their sales to pay off the loan. The vendor can choose what percentage of their sales will be destined to paying the loan, making it a flexible repayment system based on business performance."
+    },
+    {
+      "id": "test_004",
+      "question": "como as taxas da infinitepay mudam de acordo com as faixas de faturamento",
+      "source_url": "https://www.infinitepay.io",
+      "expected_answer": "As taxas da InfinitePay mudam de acordo com as faixas de faturamento: menos de 20K BRL, 20-40K BRL, 40-80K BRL, e 80K+ BRL. Quanto menor a receita, maiores são as taxas. Para recebimento em 1 dia útil: Faturamento acima de 80 mil por mês: Pix: GRÁTIS, Débito: 0,75%, Crédito à vista: 2,69%, 12x: 8,99%. Faturamento acima de 40 mil por mês: Pix: GRÁTIS, Débito: 0,79%, Crédito à vista: 2,79%, 12x: 9,56%. Faturamento acima de 20 mil por mês: Pix: GRÁTIS, Débito: 0,85%, Crédito à vista: 2,89%, 12x: 10,12%. Faturamento até 20 mil por mês: Pix: GRÁTIS, Débito: 1,37%, Crédito à vista: 3,15%, 12x: 12,40%."
+    }
+  ]
+}
+
