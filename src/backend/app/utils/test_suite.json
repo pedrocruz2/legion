@@ -1,0 +1,28 @@
+{
+  "test_cases": [
+    {
+      "id": "test_001",
+      "question": "What are the main features of the product?",
+      "source_url": "https://example.com/features",
+      "expected_answer": "The product includes feature A, feature B, and feature C. Feature A allows users to do X, feature B enables Y functionality, and feature C provides Z capabilities."
+    },
+    {
+      "id": "test_002",
+      "question": "How do I get started?",
+      "source_url": "https://example.com/getting-started",
+      "expected_answer": "To get started, you need to create an account, verify your email, and complete the initial setup. The process takes approximately 5 minutes."
+    },
+    {
+      "id": "test_003",
+      "question": "What are the pricing plans?",
+      "source_url": "https://example.com/pricing",
+      "expected_answer": "We offer three pricing plans: Basic ($9/month), Pro ($29/month), and Enterprise (custom pricing). Each plan includes different features and usage limits."
+    },
+    {
+      "id": "test_004",
+      "question": "How does the API work?",
+      "source_url": "https://example.com/api-docs",
+      "expected_answer": "The API uses RESTful endpoints with JSON payloads. Authentication is done via API keys. You can make requests to endpoints like /api/v1/users, /api/v1/data, etc. Rate limits apply based on your plan."
+    }
+  ]
+}

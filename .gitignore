@@ -1,0 +1,10 @@
+context.md
+.env
+venv/
+*.db
+data/vector_db/
+data/*.json
+!data/.gitkeep
+__pycache__/
+context.md
+questions.txt
